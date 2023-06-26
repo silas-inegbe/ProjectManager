@@ -11,10 +11,19 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
+import os
+import datetime
 
+from datetime import timedelta
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+
+
+import django
+from django.utils.encoding import smart_str
+django.utils.encoding.smart_text = smart_str
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
@@ -38,10 +47,21 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     #ADDED THIS FOR NEW #INSTALLED APP
-    'account',
-    'projectmanager',
+    'identity',
+    'manager',
+    'rest_framework.authtoken',
     'dj_rest_auth',
+     'rest_framework',
+     'allauth',
+     'rest_framework_simplejwt',
+      'allauth.socialaccount',
+        'allauth.account',
+    'allauth.socialaccount.providers.google',
+     
+     
 ]
+SITE_ID = 1
+LOGIN_REDIRECT_URL = '/'  # Or your desired URL
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -58,7 +78,7 @@ ROOT_URLCONF = 'ProjectBackend.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [ os.path.join(BASE_DIR, 'templates')],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -79,10 +99,52 @@ WSGI_APPLICATION = 'ProjectBackend.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+      'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'project',
+        'HOST' : 'localhost',
+         'USER' : 'root' ,
+         'PASSWORD':'#33fhT.iopl@'
     }
 }
+#ADDED
+# Configure DRF authentication classes
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+    
+    'rest_framework.authentication.SessionAuthentication',
+    'rest_framework.authentication.BasicAuthentication',
+    'rest_framework_simplejwt.authentication.JWTAuthentication', 
+),
+    
+}
+#_______________________ADDED_________________________________________________________________________________________#
+# Set JWT authentication settings
+JWT_AUTH = {
+    'JWT_SECRET_KEY': 'your-secret-key',  # Replace with your own secret key
+    'JWT_ALGORITHM': 'HS256',
+    'JWT_ALLOW_REFRESH': True,
+    'JWT_EXPIRATION_DELTA': datetime.timedelta(days=7),  # Set token expiration time
+}
+#set DJ-REST-AUTH TO USE JWT TOKENS
+DJ_REST_AUTH = {
+    'USE_JWT': True,
+}
+
+DJ_JWT_AUTH = {
+    'JWT_SECRET_KEY': 'your-secret-key',
+    'JWT_ALGORITHM': 'HS256',
+    'JWT_ALLOW_REFRESH': True,
+    'JWT_EXPIRATION_DELTA': timedelta(days=1),
+    'JWT_REFRESH_EXPIRATION_DELTA': timedelta(days=7),
+    'JWT_ROTATE_REFRESH_TOKENS': False,
+    'JWT_BLACKLIST_AFTER_ROTATION': True,
+    'JWT_VERIFYING_KEY': None,
+    'JWT_AUTH_HEADER_TYPES': ('Bearer',),
+    'JWT_AUTH_TOKEN_CLASSES': ('rest_framework_simplejwt.tokens.AccessToken',),
+    'JWT_TOKEN_TYPE_CLAIM': 'token_type',
+}
+
+#_______________________________________________________________________________________________________________________#
 
 
 # Password validation
@@ -102,8 +164,8 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
-
-
+#ADDED FOR ACCOUNT
+AUTH_USER_MODEL = "identity.User"
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
