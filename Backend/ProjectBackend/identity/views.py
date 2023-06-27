@@ -143,3 +143,55 @@ class CustomRegisterView(RegisterView):
 class GoogleLogin(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     client_class = OAuth2Client
+    
+    
+    
+from django.contrib.auth import get_user_model
+from allauth.socialaccount.models import SocialAccount
+from allauth.socialaccount.providers.google.views import GoogleOAuth2Adapter
+from allauth.socialaccount.providers.oauth2.client import OAuth2Client
+from dj_rest_auth.registration.views import SocialLoginView
+from rest_framework import status
+from rest_framework.response import Response
+
+class GoogleLoginCallback(SocialLoginView):
+    adapter_class = GoogleOAuth2Adapter
+    client_class = OAuth2Client
+
+    def post(self, request, *args, **kwargs):
+        # Perform the Google OAuth2 login
+        self.serializer = self.get_serializer(data=request.data)
+        self.serializer.is_valid(raise_exception=True)
+        self.login()
+        
+        # Get the authenticated user's information
+        user = self.serializer.validated_data['user']
+        token = self.serializer.validated_data['access_token']
+        
+        # Retrieve or create the SocialAccount for the user
+        social_account, _ = SocialAccount.objects.get_or_create(
+            provider='google',
+            uid=user.socialaccount_set.filter(provider='google').first().uid
+        )
+        
+        # Update the user's email if it has changed
+        social_email = user.socialaccount_set.filter(provider='google').first().extra_data.get('email', '')
+        if social_email and social_email != user.email:
+            user.email = social_email
+            user.save()
+        
+        # Generate a new token for the user
+        token = social_account.socialtoken_set.create(
+            app=social_account.app,
+            token=token,
+            token_secret='',
+        )
+        
+        # Return the response with the token or any additional data you need
+        response_data = {
+            'token': token.token,
+            'user_id': user.id,
+            'email': user.email,
+            # Include any other relevant user data
+        }
+        return Response(response_data, status=status.HTTP_200_OK)
