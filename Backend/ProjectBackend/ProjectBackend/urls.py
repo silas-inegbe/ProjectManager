@@ -16,8 +16,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path,include
-from identity import urls as accounturl
+from identity import urls as accounturl 
+from manager import urls
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('account/',include(accounturl)),
+     path('manager/',include(urls)),
 ]

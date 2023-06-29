@@ -1,12 +1,14 @@
 from django.db import models 
-from identity.models import User
+from identity.models import User 
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 # Create your models here.
 
 
-#MODELS TO TAKE CARE OF THE STORING OF THE managers DETAILS
-class ProjectManager(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phone_number = models.CharField(max_length=20) 
+
+
+
+
 
 #MODELS TO STORE THE PROJECTS DATA
 class Project(models.Model):
@@ -14,18 +16,40 @@ class Project(models.Model):
     name = models.CharField(max_length=255)
     start_date = models.DateTimeField(blank=False, null=False , default=None)
     end_date = models.DateTimeField(blank=False, null=False,default=None)
-    project_manager = models.ForeignKey(ProjectManager, on_delete=models.CASCADE, related_name='project_manager',)
-       
+    project_manager = models.ForeignKey(User, on_delete=models.CASCADE, related_name='project_manager',)
+     
     def __str__(self):
         return self.name
     
 
-
 #MODEL TO TAKE CARE OF THE STORING OF THE TEAMMEMBERS INFO   
 class ProjectTeamMember(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phone_number = models.CharField(max_length=20) 
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    phonenumber = models.CharField(max_length=20)
+    role = models.TextField(max_length=20)
+    projects = models.ManyToManyField(Project, related_name='team_members')
     
+    
+
+#MODELS TO TAKE CARE OF THE STORING OF THE managers DETAILS
+class ProjectManager(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    phone_number = models.CharField(max_length=20)
+    
+   
+    
+    """_summary_
+    """    
+    @receiver(post_save, sender=Project)
+    def create_project_manager(sender, instance, created, **kwargs):
+        if created:
+            project_manager, _ = ProjectManager.objects.get_or_create(user=instance.project_manager)
+            project_manager.save()
+        
+    def __str__(self):
+         return self.user.first_name + ' ' + self.user.last_name
+            
+           
 
     
 #MODELS FOR STORING INFOR ABOUT THE TASK , infos such as task of the project, the team member assigned to and the details of the task
@@ -33,8 +57,8 @@ class Task(models.Model):
     id = models.AutoField(primary_key=True)
     project = models.ForeignKey(Project, on_delete=models.CASCADE,related_name='project')
     name = models.CharField(max_length=20)
+    assigned_to = models.ForeignKey(ProjectTeamMember,models.CASCADE)
     description = models.TextField(blank=False, null=True ,default=None)
-    assigned_to = models.ForeignKey(ProjectTeamMember,on_delete=models.CASCADE,related_name='assigned_to')
     deadline = models.DateTimeField(null=False,default=None, blank=False)
     choice = (
         ('completed',('completed')),
