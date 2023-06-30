@@ -49,7 +49,13 @@ class ProjectTeamCreateSerializer(serializers.ModelSerializer):
         model = ProjectTeamMember
         fields = ['user', 'phonenumber', 'role']
 
-    def create(self, validated_data):
+    def create(self, validated_data): 
+        """
+        The create method takes on the serializer instances and the validated data
+        actually takes cares of saving to the database
+        """
+        #BECAUSE THE PROJECT AND THE REQUEST HAS BEEN PASSED TO THE SERIALIZERS CONTEXT THROUGH THE VIEWS, SO THE CONTEXT INSTANCE OF THE SERIALIZER HAS ACCESS
+        # USE SO ASS TO HAVE INFO TO MAKE DECISIONS
         project = self.context['project']
         request_user = self.context['request'].user
 
@@ -89,12 +95,10 @@ class ProjectTeamMemberListSerializer(serializers.ModelSerializer):
         
 
 
-class ProjectTeamAddSerializer(serializers.Serializer):
-    team_member_id = serializers.IntegerField()
-     
     
 class ProjectTeamRemoveSerializer(serializers.Serializer):
     team_member_id = serializers.IntegerField()
+   
 
     def validate_team_member_id(self, value):
         try:
@@ -102,7 +106,7 @@ class ProjectTeamRemoveSerializer(serializers.Serializer):
         except ProjectTeamMember.DoesNotExist:
             raise serializers.ValidationError("Invalid team member ID.")
 
-        # Check if the team member is part of the project
+        # Check if the team member you are removing is part of the project
         project = self.context['project']
         if not project.team_members.filter(id=value).exists():
             raise serializers.ValidationError("Team member is not part of the project.")
@@ -110,20 +114,50 @@ class ProjectTeamRemoveSerializer(serializers.Serializer):
         return team_member    
 
 class ProjectTeamAddSerializer(serializers.Serializer):
-    team_member_id = serializers.IntegerField()
+    phonenumber = serializers.CharField(max_length=20)
+    role = serializers.CharField(max_length=20)
 
-    def validate_team_member_id(self, value):
-        try:
-            team_member = ProjectTeamMember.objects.get(id=value)
-        except ProjectTeamMember.DoesNotExist:
-            raise serializers.ValidationError("Invalid team member ID.")
+    class Meta:
+        model = ProjectTeamMember
+        fields = ['phonenumber', 'role']
 
-        # Check if the team member is already part of the project
+    def create(self, validated_data):
+        """
+    This method is responsible for creating a new instance of the model
+    based on the validated data provided.
+
+    Args:
+        validated_data (dict): The validated data from the serializer.
+
+    Returns:
+        instance: The created instance of the model.
+    """
+        
         project = self.context['project']
-        if project.team_members.filter(id=value).exists():
-            raise serializers.ValidationError("Team member is already part of the project.")
+        user_id = self.context['request'].user.id
 
-        return team_member       
+        # Create the project team member
+        project_team_member = ProjectTeamMember.objects.create(
+            user_id=user_id,
+            projects=project,
+            **validated_data
+        )
+        return project_team_member
+    
+   
+def validate_team_member_id(self, value):
+    try:
+        team_member = User.objects.get(id=value)
+    except User.DoesNotExist:
+        raise serializers.ValidationError("Invalid user ID.")
+
+    # Check if the user is already part of the project
+    project = self.context['project']
+    if project.team_members.filter(user_id=value).exists():
+        raise serializers.ValidationError("User is already part of the project.")
+
+    return team_member
+       
     
 class ProjectListSerializer(serializers.ModelSerializer):
     """
@@ -206,4 +240,76 @@ class ProjectUpdateSerializer(serializers.ModelSerializer):
         return value
     
     
+
+class TaskCreateSerializer(serializers.ModelSerializer):
+    """" DOES THE VALIDATION AND CREATION OF THE TASK INSTANCE 
+
+    Args:
+        serializers (_type_): _description_
+
+    Raises:
+        serializers.ValidationError: ERROR IF NOT ASSIGNED TO A MEMBER OF THE PROJECT
+
+    Returns:
+        _type_: _description_
+    """
+    class Meta:
+        model = Task
+        fields = ['project', 'name', 'assigned_to', 'description', 'deadline']
+        read_only_fields = ['status']
+
+    def validate_assigned_to(self, value):
+        # Get the project associated with the task
+        project = self.context['project']
+
+        # Check if the assigned_to member is part of the project team
+        if not project.team_members.filter(id=value.id).exists():
+            raise serializers.ValidationError("Assigned to member is not part of the project team.")
+
+        return value 
     
+class TaskUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for updating the status of a task.
+    """
+    class Meta:
+        model = Task
+        fields = ['status']
+
+    def validate_status(self, value):
+        # Only the assigned_to member can update the status of the task
+        request_user = self.context['request'].user
+
+        # Check if the request user is the assigned_to member of the task
+        if request_user != self.instance.assigned_to.user:
+            raise serializers.ValidationError("Only the assigned_to member can update the status of the task.")
+        return value
+    
+    def update(self, instance, validated_data):
+        # Update the task status
+        instance.status = validated_data.get('status', instance.status)
+        instance.save()
+        return instance 
+    
+class TaskListSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the task list, accessible only to the project manager.
+    """
+
+    project = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    class Meta:
+        model = Task
+        fields = ['id', 'project', 'name', 'assigned_to', 'description', 'deadline', 'status']
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        
+        # Check if the request user is the project manager
+        request_user = self.context['request'].user
+        project_manager = instance.project.project_manager.user
+        if request_user != project_manager:
+            raise serializers.ValidationError("Only the project manager can access the task list.")
+        
+        return data
+
