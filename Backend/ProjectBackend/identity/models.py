@@ -43,7 +43,7 @@ class User(AbstractBaseUser, PermissionsMixin):
             ]
     gender = models.CharField(choices= choices ,max_length=50, blank=True, null=True) 
     date_of_birth = models.DateField(blank=True, null=True) 
-    phone_number = models.CharField(max_length=20 ,default=None)
+    phone_number = models.CharField(max_length=20 ,default=None , null=True)
 
     objects = UserManager()
 

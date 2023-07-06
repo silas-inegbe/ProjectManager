@@ -40,50 +40,21 @@ class ProjectManagerSerializer(serializers.ModelSerializer):
 
 
 class ProjectTeamMemberSerializer(serializers.ModelSerializer):
-    class Meta:    
+    user = UserSerializer()
+    class Meta: 
+           
         model = ProjectTeamMember
-        fields = ['id','name','role','phone_number']
+        fields = ['id','user','role','phonenumber']
         
 class ProjectTeamCreateSerializer(serializers.ModelSerializer):
     class Meta:
+        
         model = ProjectTeamMember
         fields = ['user', 'phonenumber', 'role']
 
-    def create(self, validated_data): 
-        """
-        The create method takes on the serializer instances and the validated data
-        actually takes cares of saving to the database
-        """
-        #BECAUSE THE PROJECT AND THE REQUEST HAS BEEN PASSED TO THE SERIALIZERS CONTEXT THROUGH THE VIEWS, SO THE CONTEXT INSTANCE OF THE SERIALIZER HAS ACCESS
-        # USE SO ASS TO HAVE INFO TO MAKE DECISIONS
-        project = self.context['project']
-        request_user = self.context['request'].user
+   
 
-        # Check if the request user is the project manager
-        if project.project_manager.user != request_user:
-            raise serializers.ValidationError("Only the project manager can add team members.")
-
-        # Create the project team member
-        project_team_member = ProjectTeamMember.objects.create(
-            projects=project,
-            **validated_data
-        )
-        return project_team_member
-
-    def update(self, instance, validated_data):
-        project = instance.projects
-        request_user = self.context['request'].user
-
-        # Check if the request user is the project manager
-        if project.project_manager.user != request_user:
-            raise serializers.ValidationError("Only the project manager can update team members.")
-
-        # Update the project team member
-        instance.user = validated_data.get('user', instance.user)
-        instance.phonenumber = validated_data.get('phonenumber', instance.phonenumber)
-        instance.role = validated_data.get('role', instance.role)
-        instance.save()
-        return instance
+ 
     
 
 class ProjectTeamMemberListSerializer(serializers.ModelSerializer):
@@ -96,8 +67,12 @@ class ProjectTeamMemberListSerializer(serializers.ModelSerializer):
 
 
     
-class ProjectTeamRemoveSerializer(serializers.Serializer):
+class ProjectTeamRemoveSerializer(serializers.ModelSerializer):
     team_member_id = serializers.IntegerField()
+    
+    class Meta:
+        model = ProjectTeamMember
+        fields = ['team_member_id',]
    
 
     def validate_team_member_id(self, value):
@@ -239,7 +214,15 @@ class ProjectUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError("End date must be greater than the start date.")
         return value
     
-    
+class TaskSerializer(serializers.ModelSerializer):
+    assigned_to = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Task
+        fields = ['id', 'project', 'name', 'assigned_to', 'description', 'deadline', 'status']
+
+    def get_assigned_to(self, instance):
+        return instance.assigned_to.user.first_name   
 
 class TaskCreateSerializer(serializers.ModelSerializer):
     """" DOES THE VALIDATION AND CREATION OF THE TASK INSTANCE 
@@ -258,15 +241,20 @@ class TaskCreateSerializer(serializers.ModelSerializer):
         fields = ['project', 'name', 'assigned_to', 'description', 'deadline']
         read_only_fields = ['status']
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        assigned_to = instance.assigned_to.user  # Assuming `assigned_to` is a `ProjectTeamMember` instance
+        representation['assigned_to'] = assigned_to.first_name  # Access the appropriate attribute, e.g., `first_name`
+        return representation
+
+
     def validate_assigned_to(self, value):
-        # Get the project associated with the task
+        """For validating the assigned to task"""
         project = self.context['project']
-
-        # Check if the assigned_to member is part of the project team
         if not project.team_members.filter(id=value.id).exists():
-            raise serializers.ValidationError("Assigned to member is not part of the project team.")
-
-        return value 
+            raise serializers.ValidationError("Assigned member is not part of the project team.")
+        return value
+ 
     
 class TaskUpdateSerializer(serializers.ModelSerializer):
     """
@@ -296,7 +284,8 @@ class TaskListSerializer(serializers.ModelSerializer):
     Serializer for the task list, accessible only to the project manager.
     """
 
-    project = serializers.PrimaryKeyRelatedField(read_only=True)
+    project = serializers.SerializerMethodField()
+    assigned_to = serializers.SerializerMethodField()
 
     class Meta:
         model = Task
@@ -307,9 +296,137 @@ class TaskListSerializer(serializers.ModelSerializer):
         
         # Check if the request user is the project manager
         request_user = self.context['request'].user
-        project_manager = instance.project.project_manager.user
+        project_manager = instance.project.project_manager
         if request_user != project_manager:
             raise serializers.ValidationError("Only the project manager can access the task list.")
         
+        return data 
+    def get_project(self, instance):
+            """ use the instance cause refers to the current instance of the serialized object
+                that is the task object, so access project attribute 
+            """
+            return instance.project.name
+
+    def get_assigned_to(self, instance):
+        """same here to return the name rather than the projects id"""
+        return instance.assigned_to.user.first_name + "" + instance.assigned_to.user.last_name
+    
+    
+
+class ProjectMilestoneSerializer(serializers.ModelSerializer):
+    """_summary_
+        Serializer to serialize the milestone reached of every project and store it.
+    """
+    
+    # BECAUSE I WANNA RETTURN THE NAME OF THE PROJECT AFTER CREATION
+    project = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Milestone
+        fields = ['id','name','project','description','date']
+        
+    def get_project(self, obj):
+        """_summary_
+         THIS ONLY TAKES THE PROJECT , AS A METHOD AND RETURNS THE PROJECT'S NAME
+        """
+        return obj.project.name
+    
+    
+    def to_representation(self, instance):
+        """
+          This hook allows you to modify serialized data before it is returned,
+          so here we remove the project data using the data.pop and assign to project name
+          after we add a variable project_name and assign to project_name 
+        """
+        data = super().to_representation(instance)
+        project_name = data.pop('project')
+        data['project_name'] = project_name
         return data
+    
+
+class IssueSerializer(serializers.ModelSerializer):
+    project = serializers.SerializerMethodField()
+    task = serializers.SerializerMethodField()
+    class Meta:
+        model = Issue
+        fields = ['issue_id', 'project', 'task', 'description', 'severity', 'status']
+        read_only_fields = ['issue_id', 'project']
+
+    def validate_task(self, value):
+        # Only the assigned_to member can create/update the issue for their task
+        request_user = self.context['request'].user
+
+        # Check if the request user is the assigned_to member of the task
+        if value.assigned_to.user != request_user:
+            raise serializers.ValidationError("Only the assigned_to member can create/update the issue for their task.")
+
+        return value
+    def get_project(self, obj):
+        """_summary_
+         THIS ONLY TAKES THE PROJECT , AS A METHOD AND RETURNS THE PROJECT'S NAME
+        """
+        return obj.project.name
+    def get_task(self, obj):
+        """_summary_
+         THIS ONLY TAKES THE PROJECT , AS A METHOD AND RETURNS THE PROJECT'S NAME
+        """
+        return obj.project.name
+    
+class IssueCreateSerializer(serializers.ModelSerializer):
+    reported_by = serializers.ReadOnlyField(source='reported_by.first_name')
+    class Meta:
+        model = Issue
+        fields = ['task', 'description', 'project', 'reported_by', 'severity', 'status']
+
+    def validate_task(self, value):
+        # Only the assigned_to member can create the issue for their task
+        request_user = self.context['request'].user
+
+        # Check if the request user is the assigned_to member of the task
+        if value.assigned_to.user != request_user:
+            raise serializers.ValidationError("Only the assigned_to member can create the issue for their task.")
+
+        return value
+    def create(self, validated_data):
+        # Set the reported_by field to the user making the request
+        validated_data['reported_by'] = self.context['request'].user
+
+        return super().create(validated_data)
+    """
+    def create(self, validated_data):
+        task = validated_data['task']
+        
+        # Ensure that the current user is the assigned_to member of the task
+        if task.assigned_to.user != self.context['request'].user:
+            raise serializers.ValidationError("You are not allowed to raise an issue for this task.")
+        
+        # Get the associated project of the task
+        project = task.project
+
+        # Create the issue with the associated project
+        issue = Issue.objects.create(
+            project=project,
+            **validated_data
+        )
+        return issue
+        """
+    
+# serializers.py
+
+class IssueUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Issue
+        fields = ['issue_id', 'status', 'severity']
+        read_only_fields = ['issue_id']
+
+    def update(self, instance, validated_data):
+        # Update the issue fields
+        instance.status = validated_data.get('status', instance.status)
+        instance.severity = validated_data.get('severity', instance.severity)
+        instance.save()
+
+        return instance
+        
+
+            
 

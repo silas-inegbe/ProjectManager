@@ -79,7 +79,8 @@ class CustomRegisterView(RegisterView):
                     'first_name': user.first_name,
                     'last_name': user.last_name,
                     'date_of_birth': user.date_of_birth,
-                    'gender': user.gender
+                    'gender': user.gender ,
+                    'phone_number':user.phone_number,
                 },
                 'access_token': self.access_token,
                 'refresh_token': self.refresh_token,
