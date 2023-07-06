@@ -1,0 +1,14 @@
+{
+  "files": {
+    "main.css": "/ProjectManager/tree/account/frontend/static/css/main.3a496943.css",
+    "main.js": "/ProjectManager/tree/account/frontend/static/js/main.63631930.js",
+    "static/media/icon.png": "/ProjectManager/tree/account/frontend/static/media/icon.8ba68e2ff737e0dfe594.png",
+    "index.html": "/ProjectManager/tree/account/frontend/index.html",
+    "main.3a496943.css.map": "/ProjectManager/tree/account/frontend/static/css/main.3a496943.css.map",
+    "main.63631930.js.map": "/ProjectManager/tree/account/frontend/static/js/main.63631930.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.3a496943.css",
+    "static/js/main.63631930.js"
+  ]
+}
