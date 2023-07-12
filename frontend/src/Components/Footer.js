@@ -3,19 +3,29 @@ import styled from "styled-components";
 
 
 const Container = styled.div`
+/* position: absolute;
+width: 100%;
+bottom: 10px;
+z-index: 100; */
+        .general{
+
+        
         display: flex;
         flex-direction: column;
+        
             div.footer{
         background-color: #FFF1E4;
         display: flex;
         padding: 47px 80px;
         gap: 35%;
+        
 
         
         div{
             /* border: 1px solid; */
             display: flex;
             padding: 0px;
+            
 
             h2{ 
 
@@ -47,6 +57,7 @@ const Container = styled.div`
     div.bottom{
         background-color: #001935;
         color: #fff;
+        height: 50px;
         
         h4{
             font-weight: 400;
@@ -54,12 +65,146 @@ const Container = styled.div`
         }
     };
        
+   
+    }
+    
+        @media (max-width: 1100px){
+            .general{
+
+        
+display: flex;
+flex-direction: column;
+
+    div.footer{
+
+    background-color: #FFF1E4;
+    display: flex;
+    padding: 40px 80px;
+    gap: 35%;
+    height: 10vh;
+
+
+
+div{
+    /* border: 1px solid; */
+    display: flex;
+    padding: 0px;    
+
+    h2{ 
+
+        color: #ff8a00;
+        font-size: 20px;
+        margin-bottom: 0px;
+        font-weight: 600;
+        opacity: 90%;
+        outline: none;
+    }
+    
+
+    a{
+        text-decoration: none;
+    }
+    li{
+        list-style: none;
+        color: #001935;
+            font-size: 15px;
+            margin: 10px 0px;
+            display: block;
+            font-weight: 600;
+            
+        }
+    }
+
+}
+
+div.bottom{
+background-color: #001935;
+color: #fff;
+height: 50px;
+
+h4{
+    font-weight: 400;
+    text-align: center;
+}
+};
+
+
+}
+    }
+        @media (max-width: 766px){
+            .general{
+
+        
+display: flex;
+flex-direction: column;
+
+    div.footer{
+background-color: #FFF1E4;
+display: flex;
+padding: 10px 30px;
+gap: 35%;
+height: auto;
+
+
+
+div{
+    /* border: 1px solid; */
+    display: flex;
+    padding: 0px;
+    
+
+    h2{ 
+
+        color: #ff8a00;
+        font-size: 15px;
+        margin-bottom: 0px;
+        font-weight: 600;
+        opacity: 90%;
+        outline: none;
+    }
+    
+
+    a{
+        text-decoration: none;
+    }
+    li{
+        list-style: none;
+        color: #001935;
+            font-size: 10px;
+            margin: 0px 0px;
+            display: block;
+            font-weight: 500;
+            
+        }
+    }
+
+}
+
+div.bottom{
+background-color: #001935;
+color: #fff;
+height: auto;
+margin: 0px;
+
+
+h4{
+    font-weight: 400;
+    text-align: center;
+}
+};
+
+
+}
+        }
 `
 
 
 const Footer = () => {
     return ( 
         <Container>
+
+            <div className="general">
+            
                 <div className="footer">
         <div>
             <ul>
@@ -83,7 +228,8 @@ const Footer = () => {
     <div className="bottom">
         <h4> © Copyright 2023 Project Manager | All Rights Reserved</h4>
     </div>
-
+    
+            </div>
         </Container>
         
      );
